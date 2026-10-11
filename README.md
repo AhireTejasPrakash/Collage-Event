@@ -63,7 +63,773 @@ college-event-management/
 ## 🗄️ MongoDB Collections & Document Schemas
 
 ### 1. `users` Collection
-Stores user profiles for Admins, Organizers, and Students.
+Stores user profiles for Admins# 🎓 College Event Management System — MongoDB NoSQL Project
+
+A full-stack College Event Management System built with **Node.js, Express.js, MongoDB, and Mongoose**. The project demonstrates NoSQL database design, schema validation, compound and text indexes, document references, role-based access control (RBAC), and advanced MongoDB aggregation pipelines.
+
+The system supports event creation and management, student registrations, QR-code passes, attendance tracking, feedback, personalized recommendations, venue conflict detection, and analytics dashboards.
+
+---
+
+## 🌟 Key Features
+
+- **NoSQL Database Design:** MongoDB documents, ObjectId references, embedded subdocuments, and compound unique indexes.
+- **Advanced Aggregation:** Pipelines using `$match`, `$lookup`, `$unwind`, `$group`, `$project`, `$facet`, `$addFields`, `$cond`, `$sort`, and `$dateToString`.
+- **Personalized Recommendations:** Ranks upcoming events using student interests, event popularity, and registration history.
+- **Venue Conflict Detection:** Checks venue availability, overlapping schedules, and capacity restrictions.
+- **Authentication and Authorization:** JWT authentication, password hashing with bcrypt, and role-based access for students, organizers, and administrators.
+- **QR-Code Attendance:** Registration passes and event check-in functionality.
+- **Waitlist Management:** Supports waitlisting and automatic promotion when a seat becomes available.
+- **Analytics Dashboard:** Event statistics, attendance reports, venue utilization, and engagement metrics.
+- **Database Options:** Local MongoDB, MongoDB Atlas, and optional in-memory MongoDB for testing.
+- **Validation and Security:** Frontend and backend validation, Mongoose schema rules, unique indexes, rate limiting, and security headers.
+
+## 🏗️ Project Architecture
+
+```text
+college-event-management/
+├── server/
+│   ├── config/
+│   │   └── database.js
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── Event.js
+│   │   ├── Registration.js
+│   │   ├── Venue.js
+│   │   ├── Feedback.js
+│   │   ├── Notification.js
+│   │   ├── OrganizerVerification.js
+│   │   ├── PlatformFeedback.js
+│   │   └── EventSuggestion.js
+│   ├── controllers/
+│   ├── routes/
+│   ├── middleware/
+│   ├── services/
+│   ├── utils/
+│   │   ├── seedData.js
+│   │   └── seedRunner.js
+│   ├── validations/
+│   │   └── schemas.js
+│   ├── app.js
+│   └── server.js
+├── frontend/
+│   ├── index.html
+│   ├── css/
+│   │   └── style.css
+│   └── js/
+│       └── app.js
+├── .env
+├── .env.example
+├── package.json
+└── README.md
+```
+
+*Note: This structure documents the expected project layout. Some files or folders may vary in your actual implementation.*
+
+---
+
+## 🛠️ Technology Stack
+
+| Technology | Purpose |
+|---|---|
+| Node.js | JavaScript runtime |
+| Express.js | REST API and server routing |
+| MongoDB | NoSQL database |
+| Mongoose | Data models, validation, and indexes |
+| bcrypt | Password hashing |
+| JSON Web Token (JWT) | Authentication |
+| HTML, CSS, JavaScript | Frontend dashboard |
+| QR-code library | Registration passes and attendance |
+
+---
+
+## 🗄️ MongoDB Collections
+
+### 1. Users
+
+The `users` collection stores student, organizer, and administrator accounts.
+
+```json
+{
+  "name": "Tejas Ahire",
+  "email": "student@example.com",
+  "password": "<bcrypt-hashed-password>",
+  "phone": "+919876543220",
+  "role": "student",
+  "interests": ["Workshop", "Sports", "Technology"],
+  "preferences": {
+    "notificationEnabled": true,
+    "emailNotifications": true,
+    "preferredCategories": ["Workshop", "Seminar"]
+  },
+  "isVerified": true,
+  "isActive": true
+}
+```
+
+**Validation and indexes**
+
+- Unique email index.
+- Role restricted to `admin`, `organizer`, or `student`.
+- Email and phone validation.
+- Account deactivation using `isActive: false`.
+- Passwords are stored as hashes, never as plaintext.
+
+### 2. Events
+
+The `events` collection stores event information, schedules, venues, budgets, posters, and statistics.
+
+```json
+{
+  "organizerId": "ObjectId",
+  "title": "Full-Stack Modern AI & LLM Systems Workshop",
+  "description": "A hands-on workshop covering modern AI systems and LLM applications.",
+  "category": "Workshop",
+  "startDate": "2026-11-04T12:00:00.000Z",
+  "endDate": "2026-11-04T18:00:00.000Z",
+  "venueId": "ObjectId",
+  "capacity": 50,
+  "status": "published",
+  "budget": {
+    "total": 45000,
+    "breakdown": [
+      {
+        "item": "Guest Speaker Honorarium",
+        "amount": 25000
+      },
+      {
+        "item": "Cloud Computing Credits",
+        "amount": 15000
+      },
+      {
+        "item": "Refreshments",
+        "amount": 5000
+      }
+    ]
+  },
+  "statistics": {
+    "views": 0,
+    "registrations": 0,
+    "attendance": 0
+  }
+}
+```
+
+**Validation and indexes**
+
+- Title length: 2–200 characters.
+- Event start time must precede the end time.
+- Positive capacity and non-negative budget.
+- Indexes on organizer, category, start date, venue, and status.
+- Compound unique index on `{ organizerId: 1, title: 1, startDate: 1 }`.
+- Text index on title and description for full-text search.
+
+*The sample dates and statistics are illustrative. Ensure that the actual model validators match the documented rules.*
+
+### 3. Venues
+
+The `venues` collection stores campus locations and facilities.
+
+```json
+{
+  "name": "Main University Auditorium",
+  "location": {
+    "building": "Central Block",
+    "floor": 1,
+    "room": "AUD-101"
+  },
+  "capacity": 500,
+  "amenities": [
+    "4K Projector",
+    "Central AC",
+    "Dolby Sound System",
+    "Gigabit WiFi"
+  ],
+  "isActive": true
+}
+```
+
+**Business rules**
+
+- Venue capacity must be greater than zero.
+- Event capacity cannot exceed venue capacity.
+- Overlapping bookings for the same venue must be rejected.
+- Inactive venues cannot be assigned to new events.
+
+### 4. Registrations
+
+The `registrations` collection tracks student RSVPs, waitlists, QR passes, and check-in records.
+
+```json
+{
+  "eventId": "ObjectId",
+  "studentId": "ObjectId",
+  "status": "registered",
+  "rsvpConfirmed": true,
+  "qrCode": "<generated-qr-code-data>",
+  "registeredAt": "2026-10-01T09:30:00.000Z",
+  "checkIn": {
+    "checkedIn": false,
+    "checkedInAt": null
+  }
+}
+```
+
+**Business rules**
+
+- Compound unique index on `{ eventId: 1, studentId: 1 }`.
+- A student cannot register more than once for the same event.
+- Full events may place additional students on a waitlist.
+- Cancelling a registration can promote the earliest eligible waitlisted student.
+- Attendance is recorded through the check-in process.
+
+### 5. Feedback
+
+The `feedbacks` collection stores event ratings and attendee comments.
+
+```json
+{
+  "eventId": "ObjectId",
+  "studentId": "ObjectId",
+  "ratings": {
+    "eventQuality": 5,
+    "organization": 5,
+    "venue": 4,
+    "contentRelevance": 5,
+    "overallValue": 5
+  },
+  "overallRating": 5,
+  "comments": "The workshop was informative and practical.",
+  "suggestions": "An advanced follow-up workshop would be helpful.",
+  "sentiment": "positive"
+}
+```
+
+**Business rules**
+
+- One feedback submission per student per event.
+- Ratings must satisfy the configured schema limits.
+- Only eligible attendees may submit feedback.
+- The database collection name depends on the Mongoose model configuration.
+
+### Additional Collections
+
+| Collection | Purpose |
+|---|---|
+| `notifications` | User notifications and read status |
+| `organizerverifications` | Organizer verification workflow |
+| `platformfeedbacks` | Platform bug reports and feature requests |
+| `eventsuggestions` | Student event suggestions and upvotes |
+
+*MongoDB collection names are determined by the Mongoose model name and collection configuration. Verify the exact names in your database.*
+
+---
+
+## 📊 MongoDB Aggregation Pipelines
+
+The project uses aggregation pipelines to transform and analyze MongoDB documents without requiring a separate relational database.
+
+### 1. Attendance Analytics by Category
+
+This pipeline calculates registration totals, check-ins, cancellations, no-shows, and attendance rates by event category.
+
+```javascript
+db.registrations.aggregate([
+  {
+    $lookup: {
+      from: "events",
+      localField: "eventId",
+      foreignField: "_id",
+      as: "event"
+    }
+  },
+  { $unwind: "$event" },
+  {
+    $group: {
+      _id: "$event.category",
+      totalRegistrations: {
+        $sum: {
+          $cond: [
+            { $in: ["$status", ["registered", "checked-in", "no-show"]] },
+            1,
+            0
+          ]
+        }
+      },
+      checkedIn: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "checked-in"] }, 1, 0]
+        }
+      },
+      noShows: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "no-show"] }, 1, 0]
+        }
+      },
+      cancelled: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0]
+        }
+      }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      category: "$_id",
+      totalRegistrations: 1,
+      checkedIn: 1,
+      noShows: 1,
+      cancelled: 1,
+      attendanceRate: {
+        $cond: [
+          { $gt: ["$totalRegistrations", 0] },
+          {
+            $round: [
+              {
+                $multiply: [
+                  { $divide: ["$checkedIn", "$totalRegistrations"] },
+                  100
+                ]
+              },
+              2
+            ]
+          },
+          0
+        ]
+      }
+    }
+  },
+  { $sort: { attendanceRate: -1 } }
+]);
+```
+
+*Adjust the status values and attendance denominator if your application uses a different registration lifecycle.*
+
+### 2. Personalized Event Recommendations
+
+The following example ranks upcoming events based on category interests, registration popularity, and views. It assumes `registeredEventIds` and `userInterests` have already been populated for the authenticated student.
+
+```javascript
+db.events.aggregate([
+  {
+    $match: {
+      _id: { $nin: registeredEventIds },
+      status: "published",
+      startDate: { $gte: new Date() }
+    }
+  },
+  {
+    $lookup: {
+      from: "venues",
+      localField: "venueId",
+      foreignField: "_id",
+      as: "venue"
+    }
+  },
+  {
+    $unwind: {
+      path: "$venue",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+  {
+    $addFields: {
+      relevanceScore: {
+        $add: [
+          {
+            $cond: [
+              { $in: ["$category", userInterests] },
+              10,
+              0
+            ]
+          },
+          {
+            $multiply: [
+              { $ifNull: ["$statistics.registrations", 0] },
+              0.1
+            ]
+          },
+          {
+            $multiply: [
+              { $ifNull: ["$statistics.views", 0] },
+              0.01
+            ]
+          }
+        ]
+      }
+    }
+  },
+  { $sort: { relevanceScore: -1, startDate: 1 } },
+  { $limit: 6 }
+]);
+```
+
+### 3. Venue Utilization Analysis
+
+This pipeline calculates the number of events assigned to each venue and compares average event capacity with venue capacity.
+
+```javascript
+db.venues.aggregate([
+  {
+    $lookup: {
+      from: "events",
+      localField: "_id",
+      foreignField: "venueId",
+      as: "events"
+    }
+  },
+  {
+    $project: {
+      name: 1,
+      capacity: 1,
+      totalEventsHosted: { $size: "$events" },
+      avgEventCapacity: {
+        $cond: [
+          { $gt: [{ $size: "$events" }, 0] },
+          { $avg: "$events.capacity" },
+          0
+        ]
+      }
+    }
+  },
+  {
+    $addFields: {
+      avgEventCapacity: { $round: ["$avgEventCapacity", 1] },
+      capacityUtilizationRate: {
+        $cond: [
+          { $gt: ["$capacity", 0] },
+          {
+            $round: [
+              {
+                $multiply: [
+                  { $divide: ["$avgEventCapacity", "$capacity"] },
+                  100
+                ]
+              },
+              2
+            ]
+          },
+          0
+        ]
+      }
+    }
+  },
+  { $sort: { totalEventsHosted: -1 } }
+]);
+```
+
+*This is an average planned-capacity metric, not actual attendance utilization. Actual utilization requires joining registrations or attendance records.*
+
+---
+
+## ⚡ REST API Reference
+
+All endpoints use the `/api` prefix unless stated otherwise. Protected endpoints require the authentication and authorization configured by the backend.
+
+### Authentication
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/auth/register` | Register an account |
+| POST | `/api/auth/login` | Authenticate and obtain a JWT |
+| GET | `/api/auth/me` | Get the current user's profile |
+
+### Users
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/users` | List users; admin access |
+| GET | `/api/users/:id` | Get a user profile |
+| PUT | `/api/users/:id` | Update profile or preferences |
+| DELETE | `/api/users/:id` | Deactivate an account |
+| PUT | `/api/users/:id/reactivate` | Reactivate an account |
+| GET | `/api/users/:id/history` | View registration and event history |
+
+### Events
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/events` | Search and filter events |
+| POST | `/api/events` | Create an event |
+| GET | `/api/events/:id` | Get event details and ratings |
+| PUT | `/api/events/:id` | Update event information |
+| PUT | `/api/events/:id/status` | Approve, reject, or cancel an event |
+| DELETE | `/api/events/:id` | Archive an event |
+
+### Registrations and Attendance
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/events/:eventId/register` | Register or join a waitlist |
+| GET | `/api/events/:eventId/registrations` | Get the attendee roster |
+| GET | `/api/registrations/:id` | View a registration and QR pass |
+| PUT | `/api/registrations/:id/check-in` | Record attendance |
+| DELETE | `/api/registrations/:id` | Cancel a registration |
+
+Roster access must follow the authorization and privacy rules enforced by the backend. Organizers should only access the operational rosters for events they manage, while students should receive only the permitted attendee information.
+
+### Feedback and Reviews
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/events/:eventId/feedback` | Submit feedback |
+| GET | `/api/events/:eventId/feedback` | Get event reviews and rating summaries |
+| PUT | `/api/feedback/:id` | Update feedback |
+| DELETE | `/api/feedback/:id` | Delete feedback |
+
+### Reports and Analytics
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/reports/admin` | Administrative KPI summary |
+| GET | `/api/reports/attendance` | Attendance analytics |
+| GET | `/api/reports/student` | Student engagement metrics |
+| GET | `/api/reports/organizer` | Organizer performance metrics |
+| GET | `/api/reports/venues` | Venue utilization metrics |
+| GET | `/api/reports/recommendations` | Personalized event recommendations |
+
+*This API reference describes the intended interface. Confirm each route exists in your current source code before treating it as implemented.*
+
+---
+
+## 🚀 Installation and Setup
+
+### Prerequisites
+
+Install the following before running the project:
+
+- Node.js and npm.
+- MongoDB Community Server for local database use.
+- MongoDB Compass (optional, for visual database inspection).
+
+### 1. Install Dependencies
+
+Open a terminal in the project root:
+
+```bash
+npm install
+```
+
+### 2. Configure Environment Variables
+
+Create a `.env` file in the project root. For local MongoDB, use:
+
+```env
+PORT=5000
+MONGODB_URI=mongodb://127.0.0.1:27017/college_events
+USE_IN_MEMORY_DB_IF_LOCAL_FAILS=true
+JWT_SECRET=replace_with_a_long_random_secret
+JWT_EXPIRES_IN=7d
+```
+
+**Important:** Generate your own strong JWT secret. Never commit `.env` or production credentials to Git. Keep `.env.example` populated with placeholders only.
+
+The project is configured to use local MongoDB. Keep this URI if you want to continue using your existing local database.
+
+### 3. Start MongoDB
+
+Make sure the local MongoDB service is running on port `27017`.
+
+You can verify the connection through MongoDB Compass using:
+
+```text
+mongodb://127.0.0.1:27017
+```
+
+### 4. Seed the Database
+
+Run the seed command from the project root:
+
+```bash
+npm run seed
+```
+
+The documented sample dataset contains:
+
+- 1 administrator
+- 3 organizers
+- 10 students
+- 5 venues
+- 8 events
+- 28 registrations
+- Feedback and notification records
+
+**Warning:** Check `server/utils/seedRunner.js` before running the seed command. Depending on its implementation, it may delete or recreate existing sample data. Back up any data you need to preserve.
+
+### 5. Start the Application
+
+```bash
+npm start
+```
+
+Open the application at:
+
+**http://localhost:5000**
+
+This address assumes that the Express application serves the frontend and that the server starts successfully. If the frontend is hosted separately, follow the configuration in your project.
+
+### 6. Optional Development and Test Commands
+
+```bash
+npm run validate
+npm run smoke
+npm test
+```
+
+Run only scripts that exist in your `package.json`. These commands are intended for validation, smoke testing, and comprehensive tests, respectively.
+
+---
+
+## 🔑 Test Accounts
+
+The following are the sample credentials documented for the seeded dataset.
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@example.com` | `Admin@123` |
+| Organizer | `cs_dept@example.com` | `Organizer@123` |
+| Organizer | `ieee_chapter@example.com` | `Organizer@123` |
+| Organizer | `sports_council@example.com` | `Organizer@123` |
+| Student | `student@example.com` | `Student@123` |
+| Student | `pooja.patel@example.com` | `Student@123` |
+
+These accounts work only if they exist in your seed data. Use sample credentials only in local development and never deploy publicly accessible accounts with default passwords.
+
+---
+
+## 🔍 Inspecting the Database with MongoDB Compass
+
+1. Start MongoDB and open MongoDB Compass.
+2. Connect using `mongodb://127.0.0.1:27017`.
+3. Select the `college_events` database.
+4. Inspect the users, events, registrations, venues, feedback, notifications, and other collections.
+5. Open the **Indexes** tab to review unique, compound, and text indexes.
+6. Open the **Aggregations** tab to execute and inspect the sample pipelines.
+
+Check the collection names and index definitions against the actual Mongoose models and database.
+
+---
+
+## 🔐 Validation and Security
+
+The intended architecture uses multiple layers of validation and security.
+
+| Control | Purpose |
+|---|---|
+| Password hashing | Stores password hashes using bcrypt |
+| JWT authentication | Protects authenticated API requests |
+| Role-based access control | Restricts actions to permitted roles |
+| Input validation | Rejects malformed or invalid request data |
+| Mongoose validation | Enforces schema rules |
+| Unique indexes | Prevents duplicate records where configured |
+| Rate limiting | Limits abusive or repeated requests |
+| Output escaping | Helps prevent cross-site scripting |
+| Security headers | Adds browser-level protections |
+| Centralized error handling | Returns consistent API errors without exposing internals |
+| File upload restrictions | Enforces configured size and file-type limits |
+
+Additional controls, such as CSRF protection, account lockout, content security policy, and HSTS, must be verified in the actual middleware and deployment configuration before being claimed as operational.
+
+### Department and Course Validation
+
+Where department and course values are managed through database collections, validate incoming identifiers against the corresponding records. Do not trust arbitrary client-provided department or course names.
+
+### Event Capacity
+
+The registration endpoint should check available seats before confirming a registration. A full event can return HTTP `409 Conflict` when that behavior is implemented.
+
+To prevent race conditions when multiple students register simultaneously, seat allocation and registration updates should use an appropriate atomic operation or MongoDB transaction where supported.
+
+### Venue Scheduling
+
+Before creating or updating an event, validate:
+
+- The venue exists and is active.
+- The event capacity does not exceed venue capacity.
+- The start date precedes the end date.
+- No other event overlaps the requested venue time slot.
+
+Perform these checks on the server, not only in the frontend.
+
+---
+
+## 🧪 Testing Checklist
+
+Use this checklist to verify the project end to end.
+
+- [ ] Connect to the local MongoDB database.
+- [ ] Register a new student and validate required fields.
+- [ ] Log in and verify JWT authentication.
+- [ ] Confirm unauthorized requests are rejected.
+- [ ] Verify role-based access for students, organizers, and administrators.
+- [ ] Create, update, publish, and archive an event.
+- [ ] Reject events with invalid dates or excessive venue capacity.
+- [ ] Register a student and verify the database record.
+- [ ] Reject duplicate registration for the same event.
+- [ ] Verify capacity limits and waitlist behavior.
+- [ ] Generate and validate a registration QR pass.
+- [ ] Check in a student and verify attendance persistence.
+- [ ] Submit feedback only when the eligibility rules are satisfied.
+- [ ] Run each aggregation pipeline and validate the output.
+- [ ] Verify unique and text indexes.
+- [ ] Confirm API errors do not expose passwords, tokens, or stack traces.
+
+---
+
+## 🧰 Troubleshooting
+
+### MongoDB connection failed
+
+1. Confirm MongoDB Community Server is installed and running.
+2. Verify `MONGODB_URI` in `.env`.
+3. Confirm port `27017` is available.
+4. Check the server terminal for the underlying connection error.
+
+### In-memory MongoDB download failure
+
+The optional `mongodb-memory-server` package may download a MongoDB binary when it starts. A DNS error or unavailable network can prevent that download.
+
+For normal local development, use the installed MongoDB Community Server and the local URI. Do not assume the in-memory fallback works unless its dependency, binary availability, and fallback logic have been tested.
+
+### Seed command fails
+
+- Check that MongoDB is running.
+- Review the seed script and its database connection.
+- Check whether the script clears existing records.
+- Inspect the error output before rerunning the seed.
+
+### Index creation fails
+
+Unique index creation can fail if existing records contain duplicate values. Identify and resolve duplicates before creating the index.
+
+---
+
+## 📚 Learning Outcomes
+
+This project demonstrates:
+
+- MongoDB NoSQL document modeling.
+- Mongoose schemas, validation, references, and embedded documents.
+- Unique, compound, and text indexing.
+- Aggregation pipelines and collection joins with `$lookup`.
+- Authentication and role-based authorization.
+- REST API development with Express.js.
+- Event registration, waitlist, and attendance workflows.
+- Database-backed analytics and recommendations.
+- Validation, error handling, and application testing.
+
+---
+
+## 📌 Project Information
+
+**Project:** College Event Management System  
+**Backend:** Node.js and Express.js  
+**Database:** MongoDB with Mongoose  
+**Frontend:** HTML, CSS, and JavaScript  
+**Architecture:** REST API with a web dashboard
+
+The documentation describes the intended project design. Confirm implementation details, endpoint behavior, test counts, security controls, and database contents against the current source code before using them as verified project claims., Organizers, and Students.
 
 ```json
 {
@@ -494,5 +1260,6 @@ npm test           # comprehensive system test
 | Organizer | `cs_dept@example.com` | `Organizer@123` |
 | Organizer | `ieee_chapter@example.com` | `Organizer@123` |
 | Student | `student@example.com` | `Student@123` |
-#   C o l l a g e - E v e n t  
+#   C o l l a g e - E v e n t 
+ 
  
